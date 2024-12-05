@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recorder-js@2.0.0/dist/recorder.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 flex items-center justify-center min-h-screen">
+    <div class="bg-white shadow-lg rounded-lg p-6 max-w-lg w-full">
+        <h1 class="text-xl font-bold mb-4 text-center">Record Audio for: "{{ text_prompt.text }}"</h1>
+        
+        <div id="controls" class="flex justify-center space-x-4 mb-4">
+            <button id="recordButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                Start Recording
+            </button>
+            <button id="stopInteractButton" disabled class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600">
+                Stop & Interact
+            </button>
+            <button id="stopSubmitButton" disabled class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                Stop & Submit
+            </button>
+            <button id="resetButton" disabled class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
+                Reset
+            </button>
+            <button id="newWordButton" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
+                New Word
+            </button>
+        </div>
+
+        <div id="audioPreview" class="hidden mt-4 text-center">
+            <h3 class="text-lg font-semibold mb-2">Recorded Audio:</h3>
+            <audio id="recordedAudio" controls class="w-full"></audio>
+            <div class="flex justify-center space-x-4 mt-4">
+                <button id="uploadButton" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                    Upload
+                </button>
+                <button id="resetInteractButton" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <form id="audioUploadForm" method="POST" enctype="multipart/form-data" class="hidden">
+            {% csrf_token %}
+            <input type="hidden" name="text_id" value="{{ text_prompt.id }}">
+            <input type="file" id="audioFileInput" name="audio_file" accept="audio/wav">
+        </form>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let recorder; // Recorder instance
+        let audioContext; // AudioContext for Recorder.js
+        let stream; // Media stream
+
+        const recordButton = document.getElementById('recordButton');
+        const stopInteractButton = document.getElementById('stopInteractButton');
+        const stopSubmitButton = document.getElementById('stopSubmitButton');
+        const resetButton = document.getElementById('resetButton');
+        const newWordButton = document.getElementById('newWordButton');
+        const audioPreview = document.getElementById('audioPreview');
+        const recordedAudio = document.getElementById('recordedAudio');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const uploadForm = document.getElementById('audioUploadForm');
+        const uploadButton = document.getElementById('uploadButton');
+        const resetInteractButton = document.getElementById('resetInteractButton');
+
+        function resetRecording() {
+            recordButton.disabled = false;
+            stopInteractButton.disabled = true;
+            stopSubmitButton.disabled = true;
+            resetButton.disabled = true;
+            audioPreview.classList.add('hidden');
+            recordedAudio.src = '';
+            audioFileInput.value = '';
+            if (stream) {
+                stream.getTracks().forEach((track) => track.stop()); // Stop the media stream
+            }
+        }
+
+        // Start Recording
+        recordButton.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new AudioContext();
+                const input = audioContext.createMediaStreamSource(stream);
+                recorder = new Recorder(input, { numChannels: 1 });
+
+                recorder.record();
+                recordButton.disabled = true;
+                stopInteractButton.disabled = false;
+                stopSubmitButton.disabled = false;
+                resetButton.disabled = true;
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                alert('Could not access microphone. Please check permissions.');
+            }
+        });
+
+        // Stop & Interact Recording
+        stopInteractButton.addEventListener('click', () => {
+            recorder.stop();
+            recorder.exportWAV((blob) => {
+                const audioURL = URL.createObjectURL(blob);
+                recordedAudio.src = audioURL;
+                audioPreview.classList.remove('hidden');
+
+                const audioFile = new File([blob], 'recording.wav', { type: 'audio/wav' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(audioFile);
+                audioFileInput.files = dataTransfer.files;
+
+                stopInteractButton.disabled = true;
+                stopSubmitButton.disabled = true;
+                resetButton.disabled = false;
+            });
+        });
+
+        // Stop & Submit Recording
+        stopSubmitButton.addEventListener('click', async () => {
+            recorder.stop();
+            recorder.exportWAV(async (blob) => {
+                const audioFile = new File([blob], 'recording.wav', { type: 'audio/wav' });
+                const formData = new FormData();
+                formData.append('text_id', "{{ text_prompt.id }}");
+                formData.append('audio_file', audioFile);
+
+                try {
+                    const response = await fetch(uploadForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                        },
+                    });
+
+                    if (response.ok) {
+                        alert('Audio successfully uploaded!');
+                        resetRecording();
+                        window.location.reload(); // Refresh the page after submission
+                    } else {
+                        alert('Failed to upload audio. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error submitting audio:', error);
+                    alert('An error occurred while submitting the audio.');
+                }
+            });
+        });
+
+        // Upload Button
+        uploadButton.addEventListener('click', () => {
+            if (audioFileInput.files.length > 0) {
+                uploadForm.submit();
+                window.location.reload();
+            } else {
+                alert('No audio file to upload.');
+            }
+        });
+
+        // Reset Button for Interactive Mode
+        resetInteractButton.addEventListener('click', resetRecording);
+
+        // Reset Button for Main Controls
+        resetButton.addEventListener('click', resetRecording);
+
+        // New Word Button - Refresh Page
+        newWordButton.addEventListener('click', () => {
+            window.location.reload();
+        });
+    });
+    </script>
+</body>
+</html>

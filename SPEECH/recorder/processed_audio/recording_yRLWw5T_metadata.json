@@ -1,0 +1,12 @@
+{
+    "text_prompt": {
+        "id": 6,
+        "text": "ranked"
+    },
+    "metadata": {
+        "Duration (seconds)": 0.63,
+        "RMS (Root Mean Square Energy)": 0.0384,
+        "Speech Clarity Score": 0.38,
+        "Background Noise Level": 0.0384
+    }
+}

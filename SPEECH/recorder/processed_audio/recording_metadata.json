@@ -1,0 +1,12 @@
+{
+    "text_prompt": {
+        "id": 82,
+        "text": "this"
+    },
+    "metadata": {
+        "Duration (seconds)": 1.25,
+        "RMS (Root Mean Square Energy)": 0.0429,
+        "Speech Clarity Score": 0.43,
+        "Background Noise Level": 0.0429
+    }
+}

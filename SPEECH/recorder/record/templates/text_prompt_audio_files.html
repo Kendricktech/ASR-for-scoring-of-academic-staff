@@ -1,0 +1,11 @@
+<h1>Audio Files for "{{ text_prompt.text }}"</h1>
+<ul>
+    {% for file in audio_files %}
+        <li>
+            <a href="{{ file.audio_file.url }}">{{ file.audio_file.name }}</a> 
+            (Uploaded at: {{ file.uploaded_at }})
+        </li>
+    {% empty %}
+        <li>No audio files uploaded for this text prompt yet.</li>
+    {% endfor %}
+</ul>

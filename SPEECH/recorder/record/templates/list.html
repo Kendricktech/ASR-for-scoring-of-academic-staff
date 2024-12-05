@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Recordings</title>
+</head>
+<body>
+    <h1>All Recordings</h1>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Text Prompt</th>
+                <th>Recording Date</th>
+                <th>Audio Files</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for audio_file in audio_files %}
+            <tr>
+                <td>{{ audio_file.text_prompt.text }}</td>
+                <td>{{ audio_file.uploaded_at }}</td>
+                <td>
+                    <a href="{{ audio_file.audio_file.url }}" target="_blank">
+                        {{ audio_file.audio_file.name }}
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">No recordings found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
